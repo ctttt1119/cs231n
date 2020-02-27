@@ -28,7 +28,7 @@ def svm_loss_naive(W, X, y, reg):
     num_train = X.shape[0]
     loss = 0.0
     for i in range(num_train):
-        scores = X[i].dot(W)
+        scores = X[i].dot(W) # 得到一个N*10的矩阵，对应十个类别的得分
         correct_class_score = scores[y[i]]
         for j in range(num_classes):
             if j == y[i]:
@@ -36,13 +36,16 @@ def svm_loss_naive(W, X, y, reg):
             margin = scores[j] - correct_class_score + 1 # note delta = 1
             if margin > 0:
                 loss += margin
-
+                dW[:,j] += X[i].T
+                dW[:,y[i]] -= X[i].T
     # Right now the loss is a sum over all training examples, but we want it
     # to be an average instead so we divide by num_train.
     loss /= num_train
+    dW /= num_train
 
     # Add regularization to the loss.
     loss += reg * np.sum(W * W)
+    dW += 2*reg*W
 
     #############################################################################
     # TODO:                                                                     #
@@ -78,7 +81,16 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    scores = X.dot(W) # scores是一个N*10的矩阵
+    num_train = X.shape[0]
+    correct_score = scores[np.arange(num_train),y]
+    correct_score = correct_score.reshape(num_train,-1)
+    diff = scores - correct_score +1
+    diff = np.maximum(0,diff)
+    diff[np.arange(num_train),y] = 0
+    loss += np.sum(diff)
+    loss /= num_train
+    loss += reg * np.sum(W * W)    
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -93,7 +105,12 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    diff[diff > 0] = 1
+    row_sum = np.sum(diff,axis=1)
+    diff[np.arange(num_train),y] = -row_sum.T
+    dW += np.dot(X.T, diff)
+    dW /= num_train
+    dW += 2*reg*W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
