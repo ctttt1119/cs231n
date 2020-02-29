@@ -33,7 +33,28 @@ def softmax_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    num_classes = W.shape[1]
+    num_train = X.shape[0]
+    for i in range(num_train):
+        scores = X[i].dot(W) # 得到一个N*10的矩阵，对应十个类别的得分
+        max_score = np.max(scores)
+        scores -= max_score
+        correct_class_score = np.exp(scores[y[i]])
+        sum_scores = np.sum(np.exp(scores))
+        p = correct_class_score / sum_scores
+        loss += -np.log(p)
+
+        for j in range(num_classes):
+            p_j = np.exp(scores[j]) / sum_scores
+            if j == y[i]:
+                dW[:,j] += (p_j - 1) * X[i]
+            else:
+                dW[:,j] += p_j * X[i]
+
+    loss /= num_train
+    dW /= num_train
+    loss += 0.5 * reg * np.sum(W*W)
+    dW += reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -58,7 +79,22 @@ def softmax_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N = X.shape[0]
+    C = W.shape[1]
+    f = X.dot(W)
+    f -= np.max(f,axis=1,keepdims=True)
+    p = np.exp(f) / np.sum(np.exp(f),axis=1,keepdims=True)
+    #每一行中只有对应的那个正确类别 = 1，其他都是0
+    tmp = np.zeros((N,C))
+    tmp[np.arange(N),y] = 1
+    loss += -1*np.sum(np.multiply(tmp,np.log(p)))
+    loss /= N
+    loss += 0.5 * reg * np.sum(W*W)
+    
+    dW = X.T.dot(p-tmp)
+    dW /= N
+    dW += reg*W
+
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
