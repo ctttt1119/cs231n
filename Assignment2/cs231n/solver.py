@@ -128,7 +128,7 @@ class Solver(object):
         self.num_epochs = kwargs.pop('num_epochs', 10)
         self.num_train_samples = kwargs.pop('num_train_samples', 1000)
         self.num_val_samples = kwargs.pop('num_val_samples', None)
-
+  
         self.checkpoint_name = kwargs.pop('checkpoint_name', None)
         self.print_every = kwargs.pop('print_every', 10)
         self.verbose = kwargs.pop('verbose', True)

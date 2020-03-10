@@ -191,7 +191,16 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        in_dim = input_dim
+        for i,h_dim in enumerate(hidden_dims):
+          self.params['W%d' %(i+1)] = weight_scale * np.random.randn(in_dim,h_dim)
+          self.params['b%d' %(i+1)] = np.zeros(h_dim)
+          if self.normalization == 'batchnorm':
+            self.params['gamma%d' %(i+1)] = np.ones(h_dim)
+            self.params['beta%d' %(i+1)] = np.zeros(h_dim)
+          in_dim = h_dim
+        self.params['W%d' %(self.num_layers)] = weight_scale * np.random.randn(in_dim,num_classes)
+        self.params['b%d' %(self.num_layers)] = np.zeros(num_classes)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -254,7 +263,18 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        #目前没有dropout & batch normalization
+        fc_cache = {}
+        out = X
+        for i in range(self.num_layers-1):
+          w = self.params['W%d' %(i+1)]
+          b = self.params['b%d' %(i+1)]
+          out, fc_cache[i+1] = affine_relu_forward(out, w, b)
+        #最后一层
+        w = self.params['W%d' %(self.num_layers)]
+        b = self.params['b%d' %(self.num_layers)]
+        out, out_cache = affine_forward(out, w, b)
+        scores = out
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -281,7 +301,18 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        loss, dout = softmax_loss(scores,y)
+        loss += 0.5 * self.reg * np.sum(self.params['W%d' %(self.num_layers)] * self.params['W%d' %(self.num_layers)])
+        dout, grads['W%d' %(self.num_layers)], grads['b%d' %(self.num_layers)] = affine_backward(dout, out_cache)
+        grads['W%d' %(self.num_layers)] += self.reg * self.params['W%d' %(self.num_layers)]
+        for i in range(self.num_layers-1):
+          now_index = self.num_layers-1-i
+          loss += 0.5 * self.reg * np.sum(self.params['W%d' %(now_index)] * self.params['W%d' %(now_index)])
+          dout, grads['W%d' %(now_index)], grads['b%d' %(now_index)] = affine_relu_backward(dout,fc_cache[now_index])
+          grads['W%d' %(now_index)] += self.reg * self.params['W%d' %(now_index)]
+          
+
+
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
