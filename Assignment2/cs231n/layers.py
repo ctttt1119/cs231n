@@ -365,7 +365,14 @@ def layernorm_forward(x, gamma, beta, ln_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    sample_mean = np.mean(x,axis=1) 
+    sample_mean.shape = (sample_mean.shape[0],1)
+    sample_var = np.var(x,axis=1)
+    sample_var.shape = (sample_var.shape[0],1)
+    
+    x2 = (x - sample_mean) / np.sqrt(sample_var + eps)
+    out = x2 * gamma + beta
+    cache = (gamma, x, sample_mean, sample_var, eps, x2)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -400,7 +407,23 @@ def layernorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    gamma, x, sample_mean, sample_var, eps, x2 = cache
+    dgamma = np.sum(dout * x2,axis=0)
+    dbeta = np.sum(dout,axis=0)
+    dx2 = gamma * dout
+    dx3 = dx2 / (np.sqrt(sample_var + eps))
+    dz1 = -np.sum((x-sample_mean)*dx2/(sample_var + eps),axis=1,keepdims=True)
+    dz2 = 0.5 * (sample_var + eps) ** (-0.5) * dz1
+    dz3 = dz2 / x.shape[1]
+    dz4 = 2*(x-sample_mean)*dz3
+    dx4 = dz4
+    d_mean1 = -np.sum(dz4,axis=1)
+    d_mean1.shape = (d_mean1.shape[0],1)
+    d_mean2 = -np.sum(dx3,axis=1)
+    d_mean2.shape = (d_mean2.shape[0],1)
+    dx5 = d_mean1 / x.shape[1]
+    dx6 = d_mean2 / x.shape[1]
+    dx = dx3 + dx4 + dx5 +dx6
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################

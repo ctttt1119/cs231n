@@ -195,7 +195,7 @@ class FullyConnectedNet(object):
         for i,h_dim in enumerate(hidden_dims):
           self.params['W%d' %(i+1)] = weight_scale * np.random.randn(in_dim,h_dim)
           self.params['b%d' %(i+1)] = np.zeros(h_dim)
-          if self.normalization == 'batchnorm':
+          if self.normalization is not None:
             self.params['gamma%d' %(i+1)] = np.ones(h_dim)
             self.params['beta%d' %(i+1)] = np.zeros(h_dim)
           in_dim = h_dim
@@ -267,17 +267,20 @@ class FullyConnectedNet(object):
         fc_cache = {}
         bn_cache = {}
         af_cache = {}
+        la_cache = {}
         out = X
         for i in range(self.num_layers-1):
           w = self.params['W%d' %(i+1)]
           b = self.params['b%d' %(i+1)]
           out, af_cache[i+1] = affine_forward(out, w, b)
 
-          if self.normalization=='batchnorm':
+          if self.normalization is not None:
             gamma = self.params['gamma%d' %(i+1)]
             beta = self.params['beta%d' %(i+1)]
-            out, bn_cache[i+1] = batchnorm_forward(out,gamma,beta, self.bn_params[i])
-
+            if self.normalization=='batchnorm':
+              out, bn_cache[i+1] = batchnorm_forward(out,gamma,beta, self.bn_params[i])
+            if self.normalization=='layernorm':
+              out, la_cache[i+1] = layernorm_forward(out,gamma,beta, self.bn_params[i])
           
           out, fc_cache[i+1] = relu_forward(out)
         #最后一层
@@ -327,7 +330,7 @@ class FullyConnectedNet(object):
             if self.normalization=='batchnorm':
               grad_afout, grads['gamma%d' %(now_index)], grads['beta%d' %(now_index)] = batchnorm_backward(grad_norout,bn_cache[now_index])
             if self.normalization=='layernorm':
-              pass
+              grad_afout, grads['gamma%d' %(now_index)], grads['beta%d' %(now_index)] = layernorm_backward(grad_norout,la_cache[now_index])
           #affin backward
           else:
             grad_afout = grad_norout
