@@ -263,13 +263,23 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        #目前没有dropout & batch normalization
+        #目前没有dropout
         fc_cache = {}
+        bn_cache = {}
+        af_cache = {}
         out = X
         for i in range(self.num_layers-1):
           w = self.params['W%d' %(i+1)]
           b = self.params['b%d' %(i+1)]
-          out, fc_cache[i+1] = affine_relu_forward(out, w, b)
+          out, af_cache[i+1] = affine_forward(out, w, b)
+
+          if self.normalization=='batchnorm':
+            gamma = self.params['gamma%d' %(i+1)]
+            beta = self.params['beta%d' %(i+1)]
+            out, bn_cache[i+1] = batchnorm_forward(out,gamma,beta, self.bn_params[i])
+
+          
+          out, fc_cache[i+1] = relu_forward(out)
         #最后一层
         w = self.params['W%d' %(self.num_layers)]
         b = self.params['b%d' %(self.num_layers)]
@@ -305,10 +315,24 @@ class FullyConnectedNet(object):
         loss += 0.5 * self.reg * np.sum(self.params['W%d' %(self.num_layers)] * self.params['W%d' %(self.num_layers)])
         dout, grads['W%d' %(self.num_layers)], grads['b%d' %(self.num_layers)] = affine_backward(dout, out_cache)
         grads['W%d' %(self.num_layers)] += self.reg * self.params['W%d' %(self.num_layers)]
+        grad_ReLU = dout
         for i in range(self.num_layers-1):
           now_index = self.num_layers-1-i
           loss += 0.5 * self.reg * np.sum(self.params['W%d' %(now_index)] * self.params['W%d' %(now_index)])
-          dout, grads['W%d' %(now_index)], grads['b%d' %(now_index)] = affine_relu_backward(dout,fc_cache[now_index])
+
+          #ReLU backward
+          grad_norout = relu_backward(grad_ReLU,fc_cache[now_index])
+          #normalization backward
+          if self.normalization is not None:
+            if self.normalization=='batchnorm':
+              grad_afout, grads['gamma%d' %(now_index)], grads['beta%d' %(now_index)] = batchnorm_backward(grad_norout,bn_cache[now_index])
+            if self.normalization=='layernorm':
+              pass
+          #affin backward
+          else:
+            grad_afout = grad_norout
+          grad_ReLU, grads['W%d' %(now_index)], grads['b%d' %(now_index)] = affine_backward(grad_afout,af_cache[now_index])
+          
           grads['W%d' %(now_index)] += self.reg * self.params['W%d' %(now_index)]
           
 
