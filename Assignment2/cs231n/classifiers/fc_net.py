@@ -268,21 +268,27 @@ class FullyConnectedNet(object):
         bn_cache = {}
         af_cache = {}
         la_cache = {}
+        dr_cache = {}
         out = X
         for i in range(self.num_layers-1):
+          #affin_forward
           w = self.params['W%d' %(i+1)]
           b = self.params['b%d' %(i+1)]
           out, af_cache[i+1] = affine_forward(out, w, b)
-
+          #normalization
           if self.normalization is not None:
             gamma = self.params['gamma%d' %(i+1)]
             beta = self.params['beta%d' %(i+1)]
             if self.normalization=='batchnorm':
               out, bn_cache[i+1] = batchnorm_forward(out,gamma,beta, self.bn_params[i])
             if self.normalization=='layernorm':
-              out, la_cache[i+1] = layernorm_forward(out,gamma,beta, self.bn_params[i])
-          
+              out, la_cache[i+1] = layernorm_forward(out,gamma,beta, self.bn_params[i])          
+          #ReLU
           out, fc_cache[i+1] = relu_forward(out)
+          #dropout
+          if self.use_dropout:
+            out, dr_cache[i+1] = dropout_forward(out,self.dropout_param)
+
         #最后一层
         w = self.params['W%d' %(self.num_layers)]
         b = self.params['b%d' %(self.num_layers)]
@@ -318,13 +324,17 @@ class FullyConnectedNet(object):
         loss += 0.5 * self.reg * np.sum(self.params['W%d' %(self.num_layers)] * self.params['W%d' %(self.num_layers)])
         dout, grads['W%d' %(self.num_layers)], grads['b%d' %(self.num_layers)] = affine_backward(dout, out_cache)
         grads['W%d' %(self.num_layers)] += self.reg * self.params['W%d' %(self.num_layers)]
-        grad_ReLU = dout
+        #grad_ReLU = dout
         for i in range(self.num_layers-1):
           now_index = self.num_layers-1-i
           loss += 0.5 * self.reg * np.sum(self.params['W%d' %(now_index)] * self.params['W%d' %(now_index)])
-
+          #dropout backward
+          if self.use_dropout:
+            grad_ReLUout = dropout_backward(dout,dr_cache[now_index])
+          else:
+            grad_ReLUout = dout
           #ReLU backward
-          grad_norout = relu_backward(grad_ReLU,fc_cache[now_index])
+          grad_norout = relu_backward(grad_ReLUout,fc_cache[now_index])
           #normalization backward
           if self.normalization is not None:
             if self.normalization=='batchnorm':
@@ -334,7 +344,7 @@ class FullyConnectedNet(object):
           #affin backward
           else:
             grad_afout = grad_norout
-          grad_ReLU, grads['W%d' %(now_index)], grads['b%d' %(now_index)] = affine_backward(grad_afout,af_cache[now_index])
+          dout, grads['W%d' %(now_index)], grads['b%d' %(now_index)] = affine_backward(grad_afout,af_cache[now_index])
           
           grads['W%d' %(now_index)] += self.reg * self.params['W%d' %(now_index)]
           
