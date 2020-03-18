@@ -562,7 +562,20 @@ def conv_forward_naive(x, w, b, conv_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = x.shape
+    F, _, HH, WW = w.shape
+    stride = conv_param['stride']
+    pad = conv_param['pad']
+    H_out = int(1 + (H + 2 * pad - HH) / stride)
+    W_out = int(1 + (W + 2 * pad - WW) / stride)
+    pad_x = x
+    pad_x = np.pad(pad_x,((0,0),(0,0),(pad,pad),(pad,pad)),'constant',constant_values=(0,0))
+    out = np.zeros((N, F, H_out, W_out))
+    for index_filter in range(F):
+      for i in range(H_out):
+        for j in range(W_out):
+          pad_x_mask = pad_x[:, :, stride*i:stride*i+HH, stride*j:stride*j+WW]
+          out[:,index_filter,i,j] = np.sum(pad_x_mask*w[index_filter,:,:,:],axis=(1,2,3)) + b[index_filter]   
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -591,7 +604,26 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x, w, b, conv_param = cache
+    N, C, H, W = x.shape
+    F, _, HH, WW = w.shape
+    stride = conv_param['stride']
+    pad = conv_param['pad']
+    H_out = int(1 + (H + 2 * pad - HH) / stride)
+    W_out = int(1 + (W + 2 * pad - WW) / stride)
+    dx = np.zeros(x.shape)
+    dw = np.zeros(w.shape)
+    db = np.zeros(b.shape)
+    pad_x = np.pad(x,((0,0),(0,0),(pad,pad),(pad,pad)),'constant',constant_values=(0,0))
+    dpad_x = np.zeros(pad_x.shape)
+    for index_filter in range(F):
+      for i in range(H_out):
+        for j in range(W_out):
+          db[index_filter] += dout[:,index_filter,i,j]
+          dw[index_filter,:,:,:] += dout[:,index_filter,i,j] * pad_x[:, :, stride*i:stride*i+HH, stride*j:stride*j+WW]
+          dpad_x[:, :, stride*i:stride*i+HH, stride*j:stride*j+WW] +=  dout[:,index_filter,i,j] * w[index_filter,:,:,:]
+    dx = dpad_x[:,:,pad:-pad,pad:-pad]
+    
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
