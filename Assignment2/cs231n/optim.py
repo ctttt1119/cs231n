@@ -153,12 +153,16 @@ def adam(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
+    config['t'] += 1
     #m = beta1*m + (1-beta1)*dx
     config['m'] = config['beta1']*config['m'] + (1-config['beta1'])*dw
     #v = beta2*v + (1-beta2)*(dx**2)
     config['v'] = config['beta2']*config['v'] + (1-config['beta2'])*dw*dw
+
+    mb = config['m']/(1 - config['beta1']**config['t'])
+    vb = config['v']/(1 - config['beta2']**config['t'])
     #x += - learning_rate * m / (np.sqrt(v) + eps)
-    next_w = w - config['learning_rate']*config['m'] / (np.sqrt(config['v'])+config['epsilon'])
+    next_w = w - config['learning_rate']*mb / (np.sqrt(vb)+config['epsilon'])
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
