@@ -114,7 +114,19 @@ def rnn_forward(x, h0, Wx, Wh, b):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, T, D = x.shape
+    H = h0.shape[1]
+    next_h = h0
+    h = np.zeros((N,T,H)) #当前隐藏层
+    h_1 = np.zeros((N,T,H)) #前一个隐藏层
+    temp = np.zeros((N,T,H))
+    for i in range(T):
+        temp_h = next_h
+        next_h, cache_tmp = rnn_step_forward(x[:,i,:],next_h,Wx,Wh,b)
+        h_1[:,i,:] = temp_h #前一个隐藏层状态
+        h[:,i,:] = next_h #当前隐藏层状态
+        temp[:,i,:] = cache_tmp[4]
+    cache = (x,h_1,Wx,Wh,temp)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -150,7 +162,27 @@ def rnn_backward(dh, cache):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    
+    x,h_1,Wx,Wh,temp = cache
+    N, T, D = x.shape
+    H = Wh.shape[0]
+    dx = np.zeros((N,T,D))
+    dh0 = np.zeros((N,H))
+    dWx = np.zeros((D,H))
+    dWh = np.zeros((H,H))
+    db = np.zeros(H)
+    dh_now = np.zeros((N,H))
+    for k in range(T):
+        i = T - 1 - k
+        cache_temp = (x[:,i,:],h_1[:,i,:],Wx,Wh,temp[:,i,:])
+        dh_now += dh[:,i,:]
+        dx_temp, dprev_h_temp, dWx_temp, dWh_temp, db_temp = rnn_step_backward(dh_now,cache_temp)
+        dh_now = dprev_h_temp
+        dx[:,i,:] = dx_temp
+        dWx += dWx_temp
+        dWh += dWh_temp
+        db += db_temp
+    dh0 = dh_now
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
