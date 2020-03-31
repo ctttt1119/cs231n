@@ -142,7 +142,44 @@ class CaptioningRNN(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        #(1)用线性变换从图像特征值得到初始隐藏状态，将产生维度为(N,H)的数列 
+        N,D = features.shape
+        ini_h_tmp,cache_affine = temporal_affine_forward(features.reshape(N,1,D), W_proj, b_proj)
+        N,T,H = ini_h_tmp.shape
+        init_h = ini_h_tmp.reshape(N,H)
+
+        #(2)用词嵌入层将captions_in中词的索引转换成词向量，得到一个维度为(N, T, W)的数列
+        word_out, word_cache = word_embedding_forward(captions_in, W_embed)
+
+        #(3)用RNN/LSTM处理输入的词向量，产生每一层的隐藏状态,维度为(N,T,H)
+        if self.cell_type == 'rnn':
+              hidden, hidden_cache = rnn_forward(word_out, init_h, Wx, Wh, b)
+        else:
+              hidden, hidden_cache = lstm_forward(word_out, init_h, Wx, Wh, b)
+
+        #(4)用线性变换计算每一步隐藏层对应的输出(得分)，维度(N, T, V)
+        scores,cache_scores = temporal_affine_forward(hidden,W_vocab,b_vocab)
+
+        #(5)用softmax函数计算损失，真实值为captions_out, 用mask忽视所有向量中<NULL>词汇
+        loss, dx = temporal_softmax_loss(scores, captions_out, mask, verbose=False)
+
+        #backward
+        dx_affine,dW_vocab,db_vocab = temporal_affine_backward(dx,cache_scores)
+        grads['W_vocab'] = dW_vocab
+        grads['b_vocab'] = db_vocab
+        if self.cell_type == 'rnn':
+              dword_out, dinit_h, dWx, dWh, db = rnn_backward(dx_affine, hidden_cache)
+        else:
+              dword_out, dinit_h, dWx, dWh, db = lstm_backward(dx_affine, hidden_cache)
+        grads['Wx'] = dWx
+        grads['Wh'] = dWh
+        grads['b'] = db
+        dW_embed = word_embedding_backward(dword_out, word_cache)
+        grads['W_embed'] = dW_embed
+        dx_initial,dW_proj,db_proj = temporal_affine_backward(dinit_h.reshape(N,T,H),cache_affine)
+        grads['W_proj'] = dW_proj
+        grads['b_proj'] = db_proj
+
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
